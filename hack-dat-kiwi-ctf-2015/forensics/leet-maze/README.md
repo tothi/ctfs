@@ -23,7 +23,7 @@ as the edges.
 The only caveat (mentioned in the description) is that there are
 DNS TXT records spelled using the
 [Leet alphabet](https://en.wikipedia.org/wiki/Leet) which must be
-translated to ASCII. This means if we find for example `U||$@C]{`,
+translated to ASCII. This means that if we find for example `U||$@C]{`,
 it must be translated to `unsack` when looking up the new host
 (graph point).
 
@@ -34,8 +34,9 @@ should be used.
 
 It is scripted here in bash: [dfs-maze.sh](dfs-maze.sh).
 
-This bash script traverses the whole maze using the DFS
-algorithm, and this way the key reveals the flag hidden
+This bash script traverses the whole maze using the
+[DFS algorithm](https://en.wikipedia.org/wiki/Graph_traversal#Depth-first_search),
+and this way the flag can be found
 in one of the DNS TXT records: `The key is: 8410393`.
 
 Moreover, while traversing the maze, this bash script creates
