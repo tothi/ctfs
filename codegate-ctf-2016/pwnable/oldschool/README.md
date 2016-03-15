@@ -65,5 +65,7 @@ calculation (on printf short writes) and debugging to
 obtain the correct offsets.
 
 The repo here contains the original libc from the challenge,
-and the [pwn_oldschool.py] exploit script contains the
-offsets to use that libc as well.
+and the [pwn_oldschool.py](./pwn_oldschool.py) exploit script
+contains the offsets to use that libc as well.
+
+![pwn_oldschool.py](./pwn_oldschool.png)
