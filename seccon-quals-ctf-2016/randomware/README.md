@@ -128,7 +128,7 @@ home/tc/getflag: ELF 32-bit LSB executable, Intel 80386, version 1 (SYSV), dynam
 It is a short binary full of symbols, so basic usage of
 [r2](http://radare.org/r/) is more than enough to understand the malware.
 
-![pdf @sym.main]{./screenshot_r2.png}
+![pdf @sym.main](./screenshot_r2.png)
 
 So the malware (ranDomware) does the following:
 
