@@ -1,5 +1,4 @@
-# [SECCON Quals CTF 2016](http://2016.seccon.jp/): [randomware](
-https://score-quals.seccon.jp/question/19a84b2eeb383263660420d7aa70372120b89771)
+# [SECCON Quals CTF 2016](http://2016.seccon.jp/): [randomware](https://score-quals.seccon.jp/question/19a84b2eeb383263660420d7aa70372120b89771)
 
 **Category:** Forensics
 **Points:** 300
@@ -28,7 +27,7 @@ with [`qemu-img`](https://linux.die.net/man/1/qemu-img)
 (included with [qemu](http://wiki.qemu.org/Main_Page):
 
 ```
-qemu-img convert disk.qcow2 disk.raw
+$ qemu-img convert disk.qcow2 disk.raw
 ```
 
 The output file looks like a raw disk image, but
@@ -54,7 +53,7 @@ type on the raw disk image immediately reveals the
 healthy FAT32 partition. It is not important, but
 it can be written to the file.
 
-![TestDisk]{./screenshot_testdisk.png}
+![TestDisk](./screenshot_testdisk.png)
 
 Now the disk image has been fixed, FAT32 partition
 is available:
@@ -218,4 +217,8 @@ Displaying the output jpeg shows the flag:
 SECCON{This is Virtual FAT too}
 ```
 
-![SECCON{This is Virtual FAT too]{./f14g_decrypted.jpg}
+![SECCON{This is Virtual FAT too}](./f14g_decrypted.jpg)
+
+The challenge was completed in the awesome team
+[OpenToAll](https://ctftime.org/team/9135) which finished as
+[21st](http://ranking.quals.seccon.jp/).
