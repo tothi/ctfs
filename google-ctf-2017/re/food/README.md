@@ -1,8 +1,8 @@
 # [Google CTF 2017](https://capturetheflag.withgoogle.com) : Food
 
 **Category:** Reversing
-**Points:** 185 (dynamic)
-**Solves:** 58
+**Points:** 191 (dynamic)
+**Solves:** 55
 **Difficulty:** Medium
 **Description:**
 
