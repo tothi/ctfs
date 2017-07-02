@@ -1,8 +1,8 @@
 # [Google CTF 2017](https://capturetheflag.withgoogle.com) : Secret Notes
 
 **Category:** Miscellaneous
-**Points:** 178 (dynamic)
-**Solves:** 62
+**Points:** 180 (dynamic)
+**Solves:** 61
 **Difficulty:** Medium
 **Description:**
 
