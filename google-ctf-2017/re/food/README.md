@@ -6,7 +6,7 @@
 **Difficulty:** Medium
 **Description:**
 
-> Android is all about the desserts, but can you come up with the secret recipe > to cook up a flag?
+> Android is all about the desserts, but can you come up with the secret recipe to cook up a flag?
 > 
 > * [food.apk](./food.apk)
 
