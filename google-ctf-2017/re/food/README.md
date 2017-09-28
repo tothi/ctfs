@@ -1,5 +1,9 @@
 # [Google CTF 2017](https://capturetheflag.withgoogle.com) : Food
 
+*Note, that this writeup had been chosen as a
+[winner and rewarded writeup](https://drive.google.com/drive/folders/0BwMPuUHZOj0nWUdlSkZtU1dEeHM)
+by Google. ;)*
+
 **Category:** Reversing
 **Points:** 191 (dynamic)
 **Solves:** 55
