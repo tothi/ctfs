@@ -1,0 +1,1151 @@
+= The 2019 SANS Holiday Hack Challenge Writeup
+Istvan Toth <an0n@tuta.io>, an0nr0, @an0n_r0
+v1.0, 2020-01-13
+:imagesdir: images
+:sourcedir: src
+:source-highlighter: highlightjs
+
+This is just a short, brief, technical writeup of the Blue Team
+focused 2019 SANS Holiday Hack Challenge. If you are interested in the
+whole story and progress, play it.  Maybe next time, at the end of
+2020. ;) The game is much more than this brief writeup.
+
+== Narrative [10 of 10]
+
+Parts of the "Narrative" text appears as a progress of the
+completed objectives.
+
+After completing the whole game, it is 10 of 10. Here is the
+full text:
+
+....
+Whose grounds these are, I think I know
+His home is in the North Pole though
+He will not mind me traipsing here
+To watch his students learn and grow
+Some other folk might stop and sneer
+"Two turtle doves, this man did rear?"
+I'll find the birds, come push or shove
+Objectives given: I'll soon clear
+Upon discov'ring each white dove,
+The subject of much campus love,
+I find the challenges are more
+Than one can count on woolen glove.
+Who wandered thus through closet door?
+Ho ho, what's this? What strange boudoir!
+Things here cannot be what they seem
+That portal's more than clothing store.
+Who enters contests by the ream
+And lives in tunnels meant for steam?
+This Krampus bloke seems rather strange
+And yet I must now join his team...
+Despite this fellow's funk and mange
+My fate, I think, he's bound to change.
+What is this contest all about?
+His victory I shall arrange!
+To arms, my friends! Do scream and shout!
+Some villain targets Santa's route!
+What scum - what filth would seek to end
+Kris Kringle's journey while he's out?
+Surprised, I am, but "shock" may tend
+To overstate and condescend.
+'Tis little more than plot reveal
+That fairies often do extend
+And yet, despite her jealous zeal,
+My skills did win, my hacking heal!
+No dental dealer can so keep
+Our red-clad hero in ordeal!
+This Christmas must now fall asleep,
+But next year comes, and troubles creep.
+And Jack Frost hasn't made a peep,
+And Jack Frost hasn't made a peep...
+....
+
+== Objectives
+
+=== 0) Talk to Santa in the Quad [[obj00]]
+
+[.float-group]
+--
+image:obj00_talktosanta.png[,,200,role="related right"]
+
+Task: Enter the campus quad and talk to Santa.
+
+This is just an introduction "objective" without any hacking challenges.
+
+Solution: Move out the avatar to the Quad and click Santa.
+--
+
+=== 1) Find the Turtle Doves [[obj01]]
+
+[.float-group]
+--
+image:obj01_turtledoves.png[,,200,role="related left"]
+
+Task: Find the missing turtle doves.
+
+There is still no hacking challenge.
+
+Solution: The missing turtle doves can be found in the Student Union
+(north to the Quad).
+--
+
+=== 2) Unredact Threating Document [[obj02]]
+
+[.float-group]
+--
+image:obj02_letter.png[,,200,role="related right"]
+
+Task: Someone sent a threatening letter to Elf University. What is the
+first word in ALL CAPS in the subject line of the letter? Please find
+the letter in the Quad.
+
+This is the first hacking challenge marked with difficulty 1/5.
+
+Solution: The letter can be found in the NW corner of the Quad.
+
+Here is the downloadable PDF:
+https://downloads.elfu.org/LetterToElfUPersonnel.pdf[windows="_blank"]
+--
+
+Some parts of the letter is covered with a box making it
+"Confidential".  However, the text is still there, below the box. It
+can be extracted from the PDF, or much simpler, it can be selected
+(and copy & pasted or some viewers, like evince show it).
+
+.Text selected below covering box (using viewer evince)
+[caption="Objective 2: "]
+image::obj02_letter_uncovered.png[]
+
+The answer is: "DEMAND".
+
+=== 3) Windows Log Analysis: Evaluate Attack Outcome [[obj03]]
+
+Task: We're seeing attacks against the Elf U domain! Using
+https://downloads.elfu.org/Security.evtx.zip[the event log data,window="_blank"],
+identify the user account that the attacker compromised
+using a password spray attack. Bushy Evergreen is hanging out in the
+train station and may be able to help you out.
+
+Difficulty: 1/5
+
+Solution: https://github.com/sans-blue-team/DeepBlueCLI[DeepBlueCLI,window="_blank"]
+helps analyzing the Windows Event Log.
+Using Windows PowerShell is mandatory.
+
+Processing the evtx log and extracting suspicious information:
+
+ .\DeepBlue.ps1 Security.evtx | ConvertTo-Html | Out-File security-deepblue.html
+
+The resulting html is a human-readable summary of the intrusion events.
+
+.DeepBlueCLI processed Security.evtx log
+[caption="Objective 3: "]
+image::obj03_deepblue.png[]
+
+Note, that a lots of users has a large number (77) of logon failures,
+while user "supatree" has 76 logon failures and 2 successful logon events.
+This is a typical password spraying attack, resulting "supatree" as
+a compromised user.
+
+The answer is "supatree".
+
+=== 4) Windows Log Analysis: Determine Attacker Technique [[obj04]]
+
+Task: Using
+https://downloads.elfu.org/sysmon-data.json.zip[these normalized Sysmon logs],
+identify the tool the attacker used to
+retrieve domain password hashes from the lsass.exe process. For hints
+on achieving this objective, please visit Hermey Hall and talk with
+SugarPlum Mary.
+
+Difficulty: 2/5
+
+Solution: Use the https://eql.readthedocs.io/en/latest/[Event Query Language]
+for the normalized (JSON) Sysmon logs.
+
+The normalized Sysmon log contains mostly `process` type events,
+those should be the most interesting for us. Let us filter the
+processes whose parent process is `cmd.exe`. These are a lot,
+let us exclude the uninteresting `net.exe` commands:
+
+ eql query -f ./sysmon-data.json "process where event_type = 'process' and parent_process_name = 'cmd.exe' and process_name != 'net.exe'" | jq
+
+The results are two PowerShell commands and this:
+
+image::obj04_eql.png[]
+
+This last one is about creating a backup of the ntds database
+containing the domain password hashes using the `ntdsutil.exe`
+Windows AD command line tool.
+
+So the answer is "ntdsutil.exe".
+
+=== 5) Network Log Analysis: Determine Compromised System [[obj05]]
+
+Task: The attacks don't stop! Can you help identify the IP address of
+the malware-infected system using these
+https://downloads.elfu.org/elfu-zeeklogs.zip[Zeek logs]? For hints on
+achieving this objective, please visit the Laboratory and talk with
+Sparkle Redberry.
+
+Difficulty: 2/5
+
+Solution: The Zeek logs contain
+https://github.com/activecm/rita[Real Intelligence Threat Analytics (RITA) framework]
+HTML files in the ELFU folder.
+
+Observing the "Long Connections" reveals a suspiciously long connection
+from 192.168.134.130 to 148.69.64.76:443. So 192.168.134.130 should be
+the infected system in the LAN. Furthermore, the suspiciously high
+number of beacons originating the same 192.168.134.130 IP is also
+confirming this.
+
+.RITA showing the Long Connections
+[caption="Objective 5: "]
+image::obj05_rita_long.png[]
+
+.The same source has suspiciously high number of beacons
+[caption="Objective 5: "]
+image::obj05_rita_beacons.png[]
+
+The answer is "192.168.134.130".
+
+=== 6) Splunk [[obj06]]
+
+Task: Access https://splunk.elfu.org/ as elf with password
+elfsocks. What was the message for Kent that the adversary embedded in
+this attack? The SOC folks at that link will help you along! For hints
+on achieving this objective, please visit the Laboratory in Hermey
+Hall and talk with Prof. Banas.
+
+Difficulty: 3/5
+
+Solution: This challenge is about performing searches in a dedicated
+Splunk SOC. Instructions can be found in the chat. There is a search
+engine and a file archive for answering the questions.
+
+Training questions:
+
+1.) What is the short host name of Professor Banas' computer?
+
+It is `sweetums`. (Every log entry is from the ComputerName sweetums.elfu.org)
+
+2.) What is the name of the sensitive file that was likely accessed and
+copied by the attacker? Please provide the fully qualified location of
+the file. (Example: C:\temp\report.pdf)
+
+It is `C:\Users\cbanas\Documents\Naughty_and_Nice_2019_draft.txt`
+(Just search for "index=main cbanas Users").
+
+3.) What is the fully-qualified domain name(FQDN) of the command and
+control(C2) server? (Example: badguy.baddies.com)
+
+Use the recommended search
+
+ index=main sourcetype=XmlWinEventLog:Microsoft-Windows-Sysmon/Operational powershell EventCode=3
+
+and select `DestinationHostname` from the "Interesting Fields" list.
+
+It is `144.202.46.214.vultr.com`.
+
+4.) What document is involved with launching the malicious PowerShell
+code? Please provide just the filename. (Example: results.txt)
+
+Find the starting of PowerShell activity (according to the hint):
+
+ index=main sourcetype="WinEventLog:Microsoft-Windows-Powershell/Operational" | reverse
+
+Pivot on time window (+-5 sec): process just before the first PowerShell
+activity is WINWORD.exe with ProcessId=6268. Clear the time window
+and search for ProcessId=6268. Nothing useful. NP, try it with
+Windows Process Execution events instead of Sysmon, but here the
+ProcessId is in hexadecimal (6268=0x187c):
+
+ index=main EventCode=4688 0x187c
+
+Only 2 events, one of them is the WINWORD.EXE launch with the malicious
+document in the Process Command Line:
+`19th Century Holiday Cheer Assignment.docm`
+
+.Opening the malicious docm file with WINWORD.EXE
+[caption="Objective 6: "]
+image::obj06_splunk_00.png[]
+
+5.) How many unique email addresses were used to send Holiday Cheer
+essays to Professor Banas? Please provide the numeric value. (Example:
+1)
+
+Just follow the directions in the chat and modify the query:
+
+ index=main sourcetype=stoq AND results{}.workers.smtp.subject="Holiday Cheer Assignment Submission" | table _time results{}.workers.smtp.to results{}.workers.smtp.from results{}.workers.smtp.subject results{}.workers.smtp.body | sort - _time
+
+The answer is 21.
+
+6.) What was the password for the zip archive that contained the
+suspicious file?
+
+The file came as an email attachment. It is in the previous list. Just
+narrow down the search by the filename found above:
+
+ index=main sourcetype=stoq AND results{}.workers.smtp.subject="Holiday Cheer Assignment Submission" AND 19th | table _time results{}.workers.smtp.to results{}.workers.smtp.from results{}.workers.smtp.subject results{}.workers.smtp.body | sort - _time
+
+.Found the email containing the malicious content
+[caption="Objective 6: "]
+image::obj06_splunk_01.png[]
+
+The zip password is "123456789".
+
+7.) What email address did the suspicious file come from?
+
+The answer is also available from the previous search (smtp.from field
+in the table): "bradly.buttercups@eifu.org".
+
+Now go for the Challenge Question:
+
+FINAL) What was the message for Kent that the adversary embedded in
+this attack?
+
+Following the advices from the chat the malicious file parts
+URLs will be available.
+
+.Chat in the Elf University SOC
+[caption="Objective 6: "]
+image::obj06_splunk_02.png[]
+
+.Splunk query for extracting the docm xml paths
+[caption="Objective 6: "]
+image::obj06_splunk_03.png[]
+
+Now the required files can be downloaded from the
+https://elfu-soc.s3.amazonaws.com/ server.
+
+The `core.xml` contains the "description" metadata available here:
+
+https://elfu-soc.s3.amazonaws.com/stoQ%20Artifacts/home/ubuntu/archive/f/f/1/e/a/ff1ea6f13be3faabd0da728f514deb7fe3577cc4
+
+The message in the description is: "Kent you are so unfair. And we
+were going to make you the king of the Winter Carnival.". This is the
+answer to the challenge question.
+
+
+=== 7) Get Access To The Steam Tunnels [[obj07]]
+
+Task: Gain access to the steam tunnels. Who took the turtle doves?
+Please tell us their first and last name. For hints on achieving this
+objective, please visit Minty's dorm room and talk with Minty Candy
+Cane.
+
+Difficulty: 3/5
+
+Solution: Access to The Steam Tunnels enables some "teleportation" ability.
+
+.The Steam Tunnel Map
+[caption="Objective 7: "]
+image::obj07_steam.png[]
+
+=== 8) Bypassing the Frido Sleigh CAPTEHA [[obj08]]
+
+Task: Help Krampus beat the
+https://fridosleigh.com/[Frido Sleigh contest]. For hints on
+achieving this objective, please talk with Alabaster Snowball in the
+Speaker Unpreparedness Room.
+
+Difficulty: 4/5
+
+In order to win the contest, we need to submit a form as many times as
+possible within a minute. The problem is that it is protected by a
+reverse captcha (so-called CAPTEHA: Completely Automated Public Turing
+test to tell Elves and Humans Apart).
+
+It cannot be validated by a human, because you have to classify
+100 images into 5 categories in 5 seconds. It can be solved only
+by a computer.
+
+Solution: We should build an ML Model to solve the CAPTEHA. The great
+https://www.youtube.com/watch?v=jmVPLwjm_zs[KringleCon talk of Chris Davis about Machine Learning Use Cases for Cybersecurity]
+really helps solving this challenge.
+
+Steps needed to solve this:
+
+. Get the CAPTEHA images (and categories)
+. Manually classify some images into categories
+. Train the ML Model using the manually classified images and a lot more downloaded data set
+. Use the trained model to solve the CAPTEHA (and submit the form as many times as we can ;) )
+
+Python script for getting the CAPTEHA images (and labels):
+
+.getimages.py
+[source,python]
+----
+include::{sourcedir}/capteha/getimages.py[]
+----
+
+Helper script for manual classification (using the great
+https://feh.finalrewind.org/[feh] image viewer):
+
+.pretrain.sh
+[source,bash]
+----
+include::{sourcedir}/capteha/pretrain.sh[]
+----
+
+Manual training is enough if all of the categories have ~20 images.
+
+Machine learning can be performed by the open-source
+https://www.tensorflow.org[TensorFlow] platform.
+
+The
+https://github.com/chrisjd20/img_rec_tf_ml_demo[image recognition demo by Chris]
+needs only slight modifications to use in this situation. However,
+installing TensorFlow in a Python virtual env is highly recommended.
+
+Use the `retrain.py` script from the demo to train the model.
+
+Once ready (couple of minutes), predicting new images should work
+reliably and relatively fast (used a ProLiant DL380e Gen8 with
+dual 6-core E5-2420 Xeon ;) ).
+
+The `predict_images_using_trained_model.py` script can be modified
+and updated to work with the Frido Sleigh CAPTEHA and form submission:
+
+.capteha.py
+[source,python]
+----
+include::{sourcedir}/capteha/capteha.py[]
+----
+
+After a lot of quick submissions the Frido Sleigh system replies
+with a winner message, and the winning code should land by email.
+
+.The winning message
+[caption="Objective 8: "]
+image::obj08_capteha_win.png[]
+
+The code is "8Ia8LiZEwvyZr2WO".
+
+=== 9) Retrieve Scarps of Paper from Server
+
+Task: Gain access to the data on the
+https://studentportal.elfu.org/[Student Portal] server and
+retrieve the paper scraps hosted there. What is the name of Santa's
+cutting-edge sleigh guidance system? For hints on achieving this
+objective, please visit the dorm and talk with Pepper Minstix.
+
+Solution: One can quickly detect that the application-check.php
+script has SQL injection vulnerability in the elfmail parameter.
+
+.SQL injection detected
+[caption="Objective 9: "]
+image:obj09_sqli_detect.png[]
+
+It could be exploited by boolean-blind based technique, but there
+is a (weak) protection which makes our life a little bit harder.
+
+The email checking process is the following:
+
+. Pressing the "Check Status" button on the check.php page 1st calls
+validator.php which returns a token
+. Then the check.php page calls the application-check.php with the
+email address, but the token is also included in the request
+If the token is wrong, the check does not performed.
+
+.Token validation process
+[caption="Objective 9: "]
+image::obj09_sqli_token.png[]
+
+This is an example token:
+
+MTAwOTU4NDE4MTEyMTU3NzQ3NTI4MzEwMDk1ODQxOC4xMTI=_MTI5MjI2Nzc1MTgzMzYzMjMwNjY5Mzc5LjU4NA==
+
+It is built from two parts separated by `_`, the 1st and 2nd part
+is also a base64 encoded number. Decoding the parts:
+
+* 1009584181121577475283100958418.112
+* 129226775183363230669379.584
+
+Although these numbers seem to be predictable (seems to be increasing
+almost linearly by time), but let us take a much simpler approach:
+
+* implement the validator.php call in the SQL injection exploit process.
+
+This can be achieved easily using the famous
+http://sqlmap.org/[sqlmap] tool by https://twitter.com/stamparm[@stamparm].
+
+We just need to add a custom tamper script (in /sqlmap/tamper folder):
+
+.sans2019.py
+[source,python]
+----
+include::{sourcedir}/sqli/sans2019.py[]
+----
+
+And do not forget to skip urlencode of the "payload" (we added
+urlencode for just the actual payload in the parameter in the
+tamper script, this "payload" is the real payload appended with
+the & separator and the token).
+
+Furthermore, the below used `email@email.com` should be added to
+the database (by the "Apply Now" function to make the blind attack work).
+
+ sqlmap -u https://studentportal.elfu.org/application-check.php?elfmail=email@email.com --technique B --tamper sans2019 --skip-urlencode -D elfu --threads 10 -T krampus --dump
+
+.Dumping the SQL banner using sqlmap
+[caption="Objective 9: "]
+image::obj09_sqli_banner.png[]
+
+The dumped `krampus` table contains the paper scraps hidden paths:
+
+* https://studentportal.elfu.org/krampus/0f5f510e.png
+* https://studentportal.elfu.org/krampus/1cc7e121.png
+* https://studentportal.elfu.org/krampus/439f15e6.png
+* https://studentportal.elfu.org/krampus/667d6896.png
+* https://studentportal.elfu.org/krampus/adb798ca.png
+* https://studentportal.elfu.org/krampus/ba417715.png
+
+(The prefix https://studentportal.elfu.org was added.)
+
+Fortunately these scraps can be fit together
+(e.g. using https://www.gimp.org/[GIMP]).
+
+.Paper Scraps fit together
+[caption="Objective 9: "]
+image::obj09_sqli_recovered.png[]
+
+Reading the recovered message reveals the name of the guidance system:
+"Super Sled-o-matic".
+
+
+=== 10) Recover Cleartext Document [[obj10]]
+
+Task: The https://downloads.elfu.org/elfscrow.exe[Elfscrow Crypto]
+tool is a vital asset used at Elf University
+for encrypting SUPER SECRET documents. We can't send you the source,
+but we do have
+https://downloads.elfu.org/elfscrow.pdb[debug symbols]
+that you can use.
+
+Recover the plaintext content for this
+https://downloads.elfu.org/ElfUResearchLabsSuperSledOMaticQuickStartGuideV1.2.pdf.enc[encrypted document].
+We know that it was encrypted on December 6, 2019, between 7pm and 9pm UTC.
+
+What is the middle line on the cover page? (Hint: it's five words)
+
+For hints on achieving this objective, please visit the NetWars room
+and talk with Holly Evergreen.
+
+Difficulty: 5/5
+
+Solution: Let us summarize what we have.
+
+* elfscrow.exe crypto tool: it can encrypt / decrypt files
+
+.Help of elfscrow.exe
+[caption="Objective 10: "]
+image::obj10_elfscrow.png[]
+
+* elfscrow.pdb: debug symbols for elfscrow.exe
+
+* ElfUResearchLabsSuperSledOMaticQuickStartGuideV1.2.pdf.enc: encrypted message
+(encrypted on December 6, 2019, between 7pm and 9pm UTC.)
+
+First, let us try to understand what does the elfscrow.exe binary do. This is a typical
+reverse engineering work, let us use the NSA tool https://ghidra-sre.org/[Ghidra].
+
+In order to use the debug symbols included in the pdb file, using Windows is recommended.
+The README_PDB.html file in the docs folder contains information about the needed dlls.
+
+Without any assistance, Ghidra can decompile the whole binary to human-readable
+and understandable C code.
+
+.Decompiling elfscrow.exe to C code using Ghidra
+[caption="Objective 10: "]
+image::obj10_ghidra.png[]
+
+The encrpy/decrypt algorithm used is a simple (symmetric) DES algorithm.
+In encryption, the key is generated randomly, it gets saved to a remote server,
+the server returns a pass after successful save. The pass can be used to pull
+the key and decrypt the message.
+
+The problem with this process is that random number generator gets initialized
+by a predictable value, the system time. Therefore the whole key generation is
+predictable, because it depends only on the system time (when the key was created).
+
+So we do not have to deal with server side key storage. If we know when was
+the document encrypted (approximately), we can iterate the seed (the exact
+time rounded to seconds), generate the keys, do the decryption. The decryption
+should be successful if we match the exact key generation time of the encryption
+(in seconds).
+
+The brute force decrypter implemented for this situation (using the results
+of reversing the key generator from elfscrow.exe):
+
+.decrypt-bf.py
+[source,python]
+----
+include::{sourcedir}/crypto/decrypt-bf.py[]
+----
+
+The brute forcing process is very fast, should finish in <3 mins:
+
+.Brute forcing the key
+[caption="Objective 10: "]
+image::obj10_bf.png[]
+
+After successful finish, the `ElfUResearchLabsSuperSledOMaticQuickStartGuideV1.2.pdf`
+is available as cleartext document.
+
+.Recovered Cleartext Document (cover page)
+[caption="Objective 10: "]
+image::obj10_cleartext.png[]
+
+The answer to the objective question is "Machine Learning Sleigh Router Finder".
+
+
+=== 11) Open the Sleigh Shop Door [[obj11]]
+
+Task: Visit Shinny Upatree in the Student Union and help solve their
+problem. What is written on the paper you retrieve for Shinny?
+
+For hints on achieving this objective, please visit the Student Union
+and talk with Kent Tinseltooth.
+
+Difficulty: 5/5
+
+Solution: With the hints, it is almost straightforward.
+
+. view JavaScript console, code is on the console
+. go to Print Preview, code is there
+. view Network Requests, preview of a pic is the code
+. view Local Storage
+. view Title (far right)
+. Inspect Element, modify CSS
+. Inspect Element, view Font-Family attribute in CSS
+. Inspect Element, view Event Listener
+. Inspect Element, force elements state to active
+. Inspect Element, move "cover" div, view code on board, view errors on js console,
+add populate class attrib with needed elements, add data-code attribute
+
+.Forcing elements state to active
+[caption="Objective 11: "]
+image::obj11_active.png[]
+
+.Modifying attributes on-the-fly
+[caption="Objective 11: "]
+image::obj11_cover.png[]
+
+Completing the challenge reveals the villian: "The Tooth Fairy"
+(what is also the password as it is shown on the js console).
+
+image::obj11_complete.png[]
+
+=== 12) Filter Out Poisoned Sources of Weather Data [[obj12]]
+
+Task: Use the data supplied in the
+https://downloads.elfu.org/http.log.gz[Zeek JSON logs] to identify the IP
+addresses of attackers poisoning Santa's flight mapping
+software.
+https://srf.elfu.org/[Block the 100 offending sources of information to guide Santa's sleigh]
+through the attack. Submit the Route ID ("RID") success
+value that you're given. For hints on achieving this objective, please
+visit the Sleigh Shop and talk with Wunorse Openslae.
+
+Difficulty: 4/5
+
+Solution: This challenge is about extracting information from Zeek JSON data by the
+`jq` command-line JSON processor.
+
+First we should able to login to the https://srf.elfu.org[Sleigh Route Finder API].
+
+In the Cleartext PDF from <<obj10,Objective 10>> we can read:
+"The default login credentials should be changed on startup and can be found in the readme in the ElfU Research Labs git repository."
+
+Okay, let us search for some readme in the http.log URLs:
+
+ cat http.log | jq '.[].uri' | grep -i readme
+
+The result is https://srf.elfu.org/README.md, where we can find the default admin login credentials
+`admin:924158F9522B3744F5FCD4D10FAC4356` which is working. ;)
+
+.Logged in as admin on the Sleigh Route Finder API
+[caption="Objective 12: "]
+image::obj12_api.png[]
+
+Next task is to find as many malicious IPs as we can.
+
+Malicious IPs could be detected by patterns of the most common attacks like LFI, XSS, SQLi, RCE.
+
+Pattern for LFI is `../` or `.|./`, for XSS it may be `<script`, for RCE by ShellShock it may be `() {`,
+for SQLi it may be `' `, and a general suspicious stuff should be '/etc/'. These patterns may be found in
+the URL, User-Agent string, Username, or Host also.
+
+So this query collects malicious IPs matching the above patterns:
+
+ cat http.log | jq '.[] | select([.uri, .user_agent, .username, .host] | add | match("\\.[\\|]?\\./|<script|() {|'\'' |/etc/")) | {ip: .["id.orig_h"], user_agent: .user_agent}'
+
+The results contain {ip, user_agent} pairs.
+
+But what if the attacker uses proxies (which means the IP address is not static)? Assuming the user_agent is the same,
+it is possible to block the other IPs connected to the same attacker by matching the user_agent.
+
+So the theory is:
+
+. filter IP addresses by the above pattern matching jq selection (also collect the user_agent strings as well)
+. search the log for the "malicious" user_agents and mark their IPs as malicious also (but only if the user_agent
+is somewhat unique and not a generic one, which means e.g. the number of similar user_agents is less then e.g. 8 in the
+log)
+
+Implementation:
+
+.filter_ip.sh
+[source,]
+----
+include::{sourcedir}/jq/filter_ip.sh[]
+----
+
+The result of this filtering is 98 IPs. Unfortunately it is not 100 (which was given in the challenge
+description), but it was enough, uploading it as a blocklist solved the final challenge.
+
+.Route calculation success!
+[caption="Objective 12: "]
+image::obj12_success1.png[]
+
+.Attacks blocked, fake weather data cleared, sunny route is ready!
+[caption="Objective 12: "]
+image::obj12_success2.png[]
+
+
+== Achievements
+
+=== Escape Ed
+1st micro-challenge.
+
+Here is an image to get familiar with the atmosphere:
+
+image::edescape_00.png[]
+
+The task: exit editor "ed".
+Solution: press 'q'.
+
+image::edescape_01.png[]
+
+It was really easy.
+
+Completing a challenge is an "achievement" which gives
+a hint or ticks an objective.
+
+This gives hints about Windows Log Analysis (for <<obj03,Objective 3>>):
+
+* https://github.com/sans-blue-team/DeepBlueCLI[window="_blank"]
+* https://www.ericconrad.com/2016/09/deepbluecli-powershell-module-for-hunt.html[window="_blank"]
+
+=== Find Two Turtle Doves
+
+See <<obj01,Objective 1>>.
+
+=== Windows Log Analysis: Evaluate Attack Outcome
+
+See <<obj03,Objective 3>>.
+
+=== Linux Path
+
+The task: ls command fails, resolve the issue.
+
+Solution:
+
+ type -a ls
+ /bin/ls
+
+image::linuxpath.png[]
+
+Hint (for <<obj04,Objective 4>>) is about
+the Event Query Language for Sysmon:
+
+* https://www.darkoperator.com/blog/2014/8/8/sysinternals-sysmon
+* https://pen-testing.sans.org/blog/2019/12/10/eql-threat-hunting/
+
+=== Windows Log Analysis: Determine Attacker Technique
+
+See <<obj04,Objective 4>>.
+
+=== Xmas Cheer Laser
+
+Task: extract information about the "laser parameters"
+using PowerShell commandline and set the laser using the API.
+
+.PowerShell terminal for interacting with Laser API
+[caption="Xmas Laser Project: "]
+image::laser_00.png[]
+
+Solution: Invoking a simple GET request to the API interface
+shows some help:
+
+ (Invoke-WebRequest -Uri http://localhost:1225/).RawContent
+
+The help describes the API and lists the needed parameters.
+We need to find the correct parameters.
+
+The `callingcard.txt` file mentions "history".
+
+ type /home/callingcard.txt
+
+The `history` command shows the commandline history including this:
+
+ (Invoke-WebRequest http://127.0.0.1:1225/api/angle?val=65.5).RawContent
+  
+This hints that the angle paramater should be "65.5". Furthermore,
+there is a message about "name=value" parameters.
+
+After looking around with `dir`, we can see that there is a large
+(very large) directory tree with tons of short random named files
+in the folder "depth".
+
+Searching for "=" in these files (using the "name=value" hint) by
+
+ Get-ChildItem depths -Recurse -File | Select-String -Pattern "=" | Select-Object -Unique Path
+
+returns `/home/elf/depths/produce/thhy5hll.txt`. This contains
+another parameter `temperature?=-33.5` and a next hint about
+sorting the files by length.
+
+ Get-ChildItem depths -Recurse -File | Sort-Object Length -Descending | Select-Object -First 2 FullName | ForEach-Object { type $_.FullName }
+
+This way we typed the next longest message (the longest one was the
+message containing the parameter above) which contains another hint.
+
+We should stop processes by a specific order matching usernames.
+
+Listing the processes by `Get-Process -IncludeUserName` and killing
+them by `kill` in the specified order reveals a new file what
+can be typed by `type /shall/see`.
+
+.Finding the correct parameters
+[caption="Xmas Laser Project: "]
+image::laser_01.png[]
+
+Now we should get an Event Log `.xml` file in `/etc` and group the
+`.Id`'s and select the Properties of the lonely unique event Id.
+
+Searching for the `.xml` file, processing it as xml and getting the
+required info:
+
+ Get-ChildItem /etc -Include "*.xml" -Recurse -File
+ [xml]$x = Get-Content /etc/systemd/system/timers.target.wants/EventLog.xml
+ ($x.Objs.Obj.Props | Where { $_.I32.N -Eq "Id" }) | Where { $_.I32.'#text' -Eq 1 } | Select-Object *
+
+The result contains the gases postbody parameters:
+
+ $correct_gases_postbody = @{O=6;H=7;He=3;N=4;Ne=22;Ar=11;Xe=10;F=20;Kr=8;Rn=9}
+
+The last parameter is in the environment variables. Typing `$env:` in
+the commandline and pressing `[TAB]` lists the environment
+variables. There is a special one called "riddle", `$env:riddle`
+displays its contents.
+
+It is about sorting `/etc` by LastWriteTime and mentioning the newest one.
+
+ Get-ChildItem /etc -File -Recurse | Sort-Object LastWriteTime
+
+The newest file is `/etc/apt/archive`. It is a zipfile, let us
+extract it. We may use the .NET Framework Assembly
+`System.IO.Compression.FileSystem` for extracting:
+
+ [Reflection.Assembly]::LoadWithPartialName('System.IO.Compression.FileSystem')
+ [IO.Compression.ZipFile]::ExtractToDirectory("/etc/apt/archive", "/tmp")
+
+There are two extracted files in the folder called refraction:
+
+* riddle
+* runme.elf
+
+Running the `runme.elf` shows the `refraction?val=1.867` missing parameter
+of the laser (do not forget to `chmod +x` the binary).
+
+And the riddle refers to an md5 hash in the elf home depths folder.
+
+Calculating all of the md5 hashes in depth and matching with this by
+
+ gci /home/elf/depths -File -Recurse | Get-FileHash -Algorithm md5 | Where-Object { $_.Hash -Eq "25520151A320B5B0D21561F92C8F6224" } | Select Path
+
+leads us to the `/home/elf/depths/produce/thhy5hll.txt` file we have
+found already in the beginning with a heuristic method.
+
+All of the parameters are collected, it is time to set the laser:
+
+ iwr http://127.0.0.1:1225/api/on
+ iwr http://127.0.0.1:1225/api/angle?val=65.5
+ iwr http://127.0.0.1:1225/api/temperature?val=-33.5
+ iwr http://127.0.0.1:1225/api/refraction?val=1.867
+ $gas = @{O=6;H=7;He=3;N=4;Ne=22;Ar=11;Xe=10;F=20;Kr=8;Rn=9}
+ iwr http://127.0.0.1:1225/api/gas -method POST -body $gas
+ iwr http://127.0.0.1:1225/api/output
+
+.Finally, solved!
+[caption="Xmas Laser Project: "]
+image::laser_02.png[]
+
+This was a great PowerShell lesson. This challenge hints "RITA"
+(see <<obj05,Objective 5>>).
+
+=== Network Log Analysis: Determine Compromised System
+
+See <<obj05,Objective 5>>.
+
+=== Splunk
+
+See <<obj06,Objective 6>>.
+
+=== Frosty Keypad
+
+[.float-group]
+--
+image:keypad.png[,,180,role="related right"]
+
+The Frosty Keypad is located in the East side of The Quad,
+it is unlocking the door to the Dormitory.
+
+The keys 1, 3, 7 and Enter seem metled while the others
+are frozen. This reveals that the combination should contain
+only the digits 1, 3 and 7.
+
+The unlocking HTTP request to the keypad is a GET request to
+
+ https://keypad.elfu.org/checkpass.php?i=1234&resourceId=
+
+where `i` is the digit combination (actually permutation) and
+the `resourceId` is the player's id.
+--
+
+Supposing a 4-digit code, brute forcing is trivial by
+https://github.com/xmendez/wfuzz[wfuzz]:
+
+ wfuzz -u 'https://keypad.elfu.org/checkpass.php?i=FUZZ&resourceId=34axxxxx-81xx-46xx-bexx-7594xxxxxxxx' -z permutation,137-4 --hs=Invalid
+
+.Cracking the keypad code
+[caption="Frosty Keypad: "]
+image:keypad_crack.png[]
+
+The keypad code which unlocks the Dormitory is "7331".
+
+=== Get Access To The Steam Tunnels
+
+See <<obj07,Objective 7>>.
+
+=== Teleportation via Steam Tunnels
+
+See <<obj07,Objective 7>>.
+
+=== Nyanshell
+
+Task: Login as alabaster_snowball with Password2
+
+Solution: The goal is to copy overwrite /bin/nsh with /bin/bash,
+but there are problems with the attributes of /bin/nsh.
+Fortunately sudo chattr is allowed. ;)
+
+----
+sudo -l
+lsattr /bin/nsh
+sudo /usr/bin/chattr -i /bin/nsh
+cp /bin/bash /bin/nsh
+su alabaster_snowball (Password2)
+----
+
+image::nyanshell.png[]
+
+This gives hint for <<obj8, Objective 8>>:
+
+* https://www.youtube.com/watch?v=jmVPLwjm_zs[Chris Davis, Machine Learning Use Cases for Cybersecurity | KringleCon 2019]
+
+=== Bypassing the Frido Sleigh CAPTEHA
+
+See <<obj08,Objective 8>>.
+
+=== Graylog
+
+Task: Answer all of the questions using the graylog.
+
+Solution: Login to https://graylog.elfu.org using elfustudent:elfustudent credentials.
+Using the Kringelcon frame is mandatory for the question form.
+
+1.) Minty CandyCane reported some weird activity on his computer after he clicked on a link in Firefox for a cookie recipe and downloaded a file.
+What is the full-path + filename of the first malicious file downloaded by Minty?
+
+* search: cookie_recipe.exe
+* answer: `C:\Users\minty\Downloads\cookie_recipe.exe`
+
+2.) The malicious file downloaded and executed by Minty gave the attacker remote access to his machine. What was the ip:port the malicious file connected to first?
+
+* search: ProcessId:5256
+* answer: 192.168.247.175:4444
+
+3.) What was the first command executed by the attacker?
+(answer is a single word)
+
+* search: ParentProcessId:5256
+* answer: whoami
+
+4.) What is the one-word service name the attacker used to escalate privileges?
+
+* search: ParentProcessId:5256
+* answer: webexservice
+
+5.) What is the file-path + filename of the binary ran by the attacker to dump credentials?
+
+* search: mimikatz or ParentProcessImage:"C:\\Users\\minty\\Downloads\\cookie_recipe2.exe"
+* answer: "C:\cookie.exe"
+
+6.) The attacker pivoted to another workstation using credentials gained from Minty's computer. Which account name was used to pivot to another machine?
+
+* search: rdp
+* answer: alabaster
+
+7.) What is the time ( HH:MM:SS ) the attacker makes a Remote Desktop connection to another machine?
+
+* search: EventID:4624 AND AccountName:alabaster AND LogonType:10
+* answer: 06:04:28
+
+8.) The attacker navigates the file system of a third host using their Remote Desktop Connection to the second host. What is the SourceHostName,DestinationHostname,LogonType of this connection? (submit in that order as csv)
+
+* search: \_exists_:LogonType AND \_exists_:SourceHostName AND \_exists_:DestinationHostname AND SourceHostName:ELFU-RES-WKS2
+* answer: ELFU-RES-WKS2,elfu-res-wks3,3
+
+9.) What is the full-path + filename of the secret research document after being transferred from the third host to the second host?
+
+* search: EventID:2 AND source:elfu-res-wks2
+* answer: `C:\Users\alabaster\Desktop\super_secret_elfu_research.pdf`
+
+10.) What is the IPv4 address (as found in logs) the secret research document was exfiltrated to?
+
+* search: super_secret_elfu_research.pdf, then ProcessId:1232
+* answer: `104.22.3.84`
+
+After finishing, got hint about sqlmap tamper (See <<obj09,Objective 9>>).
+
+
+=== Retrieve Scraps of Paper from Server
+
+See <<obj09,Objective 9>>.
+
+
+=== Smart Braces
+
+Task: Harden the firewall according to /home/elfuuser/IOTteethBraces.md
+
+image::firewall.png[]
+
+Solution: `cat /home/elfuuser/IOteethBraces.md` and follow the instructions:
+
+----
+sudo iptables -F INPUT
+sudo iptables -F FORWARD
+sudo iptables -F OUTPUT
+sudo iptables -P INPUT DROP
+sudo iptables -P FORWARD DROP
+sudo iptables -P OUTPUT DROP
+sudo iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+sudo iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+sudo iptables -A INPUT -p tcp -s 172.19.0.225 --dport 22 -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport 21 -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+sudo iptables -A OUTPUT -p tcp --dport 80 -j ACCEPT
+sudo iptables -A INPUT -i lo -j ACCEPT
+----
+
+The firewall is now hardened. Task is ready.
+
+
+=== Mongo Pilfer
+
+Task: Enumerate MongoDB
+
+Solution:
+
+----
+ps uaxww
+mongo --shell 127.0.0.1:12121
+show dbs
+use elfu
+show collections
+db.solution.find()
+db.loadServerScripts();displaySolution();
+----
+
+Gives hint for reverse engineering (see <<obj10,Objective 10>>).
+
+
+
+=== Recover Cleartext Document
+
+See <<obj10,Objective 10>>.
+
+
+=== Open the Sleigh Workshop Door
+
+See <<obj11,Objective 11>>.
+
+=== Zeek JSON Analysis
+
+Task: Identify the destination IP with the longest connection duration.
+Run runtoanswer to submit.
+
+Solution: Not too elegant, but here it is working:
+
+ jq '. | select(.duration>500000)' conn.log
+ runtoanswer
+
+image::zeekjson.png[]
+
+The IP with the longest connection duration is "13.107.21.200". This challenge
+is an intro to <<obj12,Objective 12>>.
+
+
+=== Holiday Hack Trail
+
+Task: Win the game (travel to the end of the trail).
+
+Solution: Game state parameters are stored on the client side
+and the client sends the parameters to the server in every turn.
+
+The server trusts the client and accepts everything the client sends
+without validation. In "Hard" difficulty there is a verifier hash, but
+it is also calculated on the client side.
+
+As a consequence, the long trail can be "bypassed" on the 1st turn
+by a properly modified request and we can jump to the end of trail
+and win the game immediately.
+
+.A modified request in hard difficulty (with recalculated hash)
+[caption="Holiday Hack Trail: "]
+image::trail_00.png[]
+
+Note, that the hash is md5(sum of various integer parameters).
+
+After submitting the edited request, winning is automatic.
+
+.Winning in hard difficulty
+[caption="Holiday Hack Trail: "]
+image::trail_01.png[]
+
+Looking at the victory page source, there are 10 hints referring to
+the 10 browser task in <<obj11,Objective 11>>.
+
+.Hints for Objective 11 in the victory source
+[caption="Holiday Hack Trail: "]
+image::trail_02.png[]
+
+
+=== Filter Out Poisoned Sources of Weather Data
+
+See <<obj12,Objective 12>>.
+
+=== You Won!
+
+.In The Bell Tower
+[caption="You Won: "]
+image::win_00.png[]
+
+.Letter Of Wintry Magic
+[caption="You Won: "]
+image::win_01.png[]
+
