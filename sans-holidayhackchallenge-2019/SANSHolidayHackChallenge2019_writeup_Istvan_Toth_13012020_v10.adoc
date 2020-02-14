@@ -6,7 +6,6 @@ v1.0, 2020-01-13 (Winners update on 2020-02-13)
 :source-highlighter: highlightjs
 :icons: font
 :docinfo: private
-:description: Super Honorable Mentioned Award Winner Writeup for The 2019 SANS Holiday Hack Challenge
 
 [.lead]
 This is just a short, brief, technical writeup of the Blue Team
