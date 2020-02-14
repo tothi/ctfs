@@ -1,14 +1,34 @@
 = The 2019 SANS Holiday Hack Challenge Writeup
 Istvan Toth <an0n@tuta.io>, an0nr0, @an0n_r0
-v1.0, 2020-01-13
+v1.0, 2020-01-13 (Winners update on 2020-02-13)
 :imagesdir: images
 :sourcedir: src
 :source-highlighter: highlightjs
+:icons: font
 
+[.lead]
 This is just a short, brief, technical writeup of the Blue Team
 focused 2019 SANS Holiday Hack Challenge. If you are interested in the
 whole story and progress, play it.  Maybe next time, at the end of
 2020. ;) The game is much more than this brief writeup.
+
+[IMPORTANT]
+====
+As of the https://www.holidayhackchallenge.com/2019/winners_answers.html[Winners and Answers report] announced at the
+https://www.sans.org/webcasts/2019-holiday-hack-challenge-award-ceremony-113100[Closing Ceremony], this writeup had been selected into the
+*SUPER HONORABLE MENTIONS* category:
+
+____
+For our next category, we've got a group of people who really went above and beyond with their entries. Their write-ups were SUPERB, demonstrating excellent technical skills along with impressive communication skills. Congrats to those earning a Super Honorable Mention
+____
+
+For some statistics:
+
+* 14,912 Total Number of Players
+* 375 Crossed the Finish Line
+* 303 Reports Submitted
+====
+
 
 == Narrative [10 of 10]
 
