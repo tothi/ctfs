@@ -19,7 +19,7 @@ https://www.sans.org/webcasts/2019-holiday-hack-challenge-award-ceremony-113100[
 *SUPER HONORABLE MENTIONS* category:
 
 ____
-For our next category, we've got a group of people who really went above and beyond with their entries. Their write-ups were SUPERB, demonstrating excellent technical skills along with impressive communication skills. Congrats to those earning a Super Honorable Mention
+For our next category, we've got a group of people who really went above and beyond with their entries. Their write-ups were SUPERB, demonstrating excellent technical skills along with impressive communication skills. Congrats to those earning a Super Honorable Mention.
 ____
 
 For some statistics:
