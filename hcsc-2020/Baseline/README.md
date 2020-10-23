@@ -19,5 +19,5 @@ Challenge was accessible through SSH. Challenge binary is here in the repo: [tes
 
 Solution Python script is here: [solve.py](./solve.py) (requires a precomputed rainbow table, read the writeup)
 
-Writeup is [here](https://medium.com).
+Writeup is [here](https://medium.com/@an0n_r0/using-a-pie-binary-as-a-shared-library-hcsc-2020-ctf-writeup-390a8a437f31).
 
